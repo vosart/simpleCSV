@@ -1,0 +1,128 @@
+from fastapi import APIRouter, APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
+from pathlib import Path
+from app.infrastructure.db import create_task, update_task, get_task, init_db, get_tasks
+from app.core.constants import ALLOWED_STATUSES
+from app.services.processor import process_in_background
+from app.api_logic import validate_file_extension, save_uploaded_file, lifespan
+import os
+import uuid
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", BASE_DIR / "files"))
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+
+router = APIRouter()
+
+@router.post("/process_csv")
+async def process_csv(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
+):
+    if not validate_file_extension(file.filename):
+        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+
+    if background_tasks is None:
+        raise HTTPException(status_code=500, detail="BackgroundTasks not provided")
+
+    # Генерация уникального ID для задачи
+    file_id = str(uuid.uuid4())
+    input_path = UPLOAD_DIR / f"{file_id}.csv"
+    output_path = UPLOAD_DIR / f"{file_id}.xlsx"
+
+
+    await save_uploaded_file(file, input_path)
+    create_task(file_id, str(input_path), str(output_path))
+
+    # Добавляем задачу в background
+    background_tasks.add_task(
+        process_in_background,
+        input_path,
+        output_path,
+        file_id
+    )
+
+    return {
+        "status": "processing",
+        "file_id": file_id,
+        "download_url": f"/download/{file_id}"
+    }
+
+
+@router.get("/download/{file_id}")
+def download_file(file_id: str):
+    """Скачивание готового Excel файла"""
+    file_path = UPLOAD_DIR / f"{file_id}.xlsx"
+    task = get_task(file_id)
+    if task["status"] != "done":
+        raise HTTPException(400, "File yet not ready")
+
+    return FileResponse(
+        file_path,
+        filename=f"{file_id}.xlsx",
+        media_type="routerlication/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
+@router.get("/status/{file_id}")
+def check_status(file_id: str):
+    """Проверка статуса задачи"""
+    task = get_task(file_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    return task
+
+@router.get("/tasks")
+def list_tasks(status: str = None, limit: int = 50, offset: int = 0):
+    limit = min(limit, 100)
+    if status is not None:
+        if status not in ALLOWED_STATUSES:
+            raise HTTPException(status_code=400, detail="Status is not valid")
+    return get_tasks(status, limit, offset)
+
+@router.get("/tasks/all")
+def list_all_tasks():
+    tasks = get_tasks(limit=1000, offset=0)
+
+    return {
+        "tasks": tasks,
+        "total": len(tasks)
+    }
+
+@router.post("/tasks/{file_id}/retry")
+def retry_task(file_id: str, background_tasks: BackgroundTasks):
+    task = get_task(file_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task["status"] != "failed":
+        raise HTTPException(status_code=400, detail="Only failed tasks can be retried")
+
+
+    update_task(file_id, status="processing", error=None)
+    background_tasks.add_task(
+        process_in_background,
+        Path(task["input_path"]),
+        Path(task["output_path"]),
+        file_id
+    )
+    return {"status": "restarted", "file_id": file_id}
+
+@router.get("/tasks/stats")   # ← сюда
+def tasks_stats():
+    tasks = get_tasks()
+    return {
+        "total": len(tasks),
+        "done": sum(t["status"] == "done" for t in tasks),
+        "failed": sum(t["status"] == "failed" for t in tasks),
+        "processing": sum(t["status"] == "processing" for t in tasks),
+    }
+
+@router.get("/tasks/{file_id}")
+def get_task_detail(file_id: str):
+    task = get_task(file_id)
+    if not task:
+        return {"error": "not found"}
+    return task

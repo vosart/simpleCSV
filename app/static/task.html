@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Task Detail</title>
+    <script defer src="/static/task.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        .box {
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+
+        .done {
+            color: green;
+        }
+
+        .failed {
+            color: red;
+        }
+
+        .processing {
+            color: orange;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Task Detail</h2>
+
+    <div class="box">
+        <div><b>File ID:</b> <span id="file_id"></span></div>
+        <div><b>Status:</b> <span id="status"></span></div>
+        <div><b>Attempts:</b> <span id="attempts"></span></div>
+    </div>
+
+    <div class="box">
+        <div><b>Input:</b> <span id="input_path"></span></div>
+        <div><b>Output:</b> <span id="output_path"></span></div>
+    </div>
+
+    <div class="box">
+        <button onclick="retryTask()">Retry</button>
+        <button onclick="deleteTask()">Delete</button>
+    </div>
+
+</body>
+
+</html>
