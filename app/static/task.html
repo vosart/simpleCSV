@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Task Detail</title>
-    <script defer src="/static/task.js"></script>
+
+    <script type="module" defer src="/static/js/ui/taskPage.js"></script>
+
     <style>
         body {
             font-family: Arial;
@@ -47,8 +49,8 @@
     </div>
 
     <div class="box">
-        <button onclick="retryTask()">Retry</button>
-        <button onclick="deleteTask()">Delete</button>
+        <button id="retryBtn">Retry</button>
+        <button id="deleteBtn">Delete</button>
     </div>
 
 </body>

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from app.infrastructure.scheduler import start_scheduler, stop_scheduler
@@ -35,6 +36,8 @@ app = FastAPI(
     description="API for processing CSV files and generating Excel reports",
     lifespan=lifespan
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 def validate_file_extension(filename: str) -> bool:

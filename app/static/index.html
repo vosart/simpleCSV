@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <title>CSV Processor</title>
-    <script defer src="/static/app.js"></script>
+
+    <script type="module" defer src="/static/js/ui/app.js"></script>
+
     <style>
         body {
             font-family: Arial;
@@ -43,12 +45,12 @@
 
     <!-- Upload -->
     <input type="file" id="fileInput">
-    <button onclick="uploadFile()">Upload</button>
+    <button id="uploadBtn">Upload</button>
 
     <hr>
 
     <!-- Tasks -->
-    <button onclick="loadTasks()">Refresh tasks</button>
+    <button id="refreshBtn">Refresh tasks</button>
 
     <table>
         <thead>
@@ -59,6 +61,7 @@
                 <th>Actions</th>
             </tr>
         </thead>
+
         <tbody id="tasksTable"></tbody>
     </table>
 

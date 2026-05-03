@@ -1,7 +1,7 @@
 from fastapi import APIRouter, APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from pathlib import Path
-from app.infrastructure.db import create_task, update_task, get_task, init_db, get_tasks
+from app.infrastructure.db import create_task, delete_task, update_task, get_task, init_db, get_tasks
 from app.core.constants import ALLOWED_STATUSES
 from app.services.processor import process_in_background
 from app.api_logic import validate_file_extension, save_uploaded_file, lifespan
@@ -126,3 +126,8 @@ def get_task_detail(file_id: str):
     if not task:
         return {"error": "not found"}
     return task
+
+@router.delete("/tasks/{file_id}")
+def delete_task_api(file_id: str):
+    delete_task(file_id)
+    return {"status": "deleted"}
