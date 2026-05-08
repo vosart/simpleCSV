@@ -2,10 +2,9 @@ from genericpath import exists
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from app.core.constants import CLEANUP_STATUSES
 import logging
 from pathlib import Path
-from app.models import TaskModel
+from app.models import TaskModel, TaskStatus
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_NAME = BASE_DIR / "simpleCSV.db"
@@ -176,10 +175,9 @@ def delete_task(file_id: str):
 
 
 def get_old_tasks(days: int) -> list:
-    if not CLEANUP_STATUSES:
-        return []
+    cleanup_statuses = (TaskStatus.done, TaskStatus.failed)
     old_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
-    placeholders = ", ".join(["?"] * len(CLEANUP_STATUSES))
+    placeholders = ", ".join(["?"] * len(cleanup_statuses))
     with get_db() as conn:
         cursor = conn.execute(
             f"""
@@ -189,7 +187,7 @@ def get_old_tasks(days: int) -> list:
                               ORDER BY created_at ASC
                               LIMIT 100
                               """,
-            (old_date, *CLEANUP_STATUSES),
+            (old_date, *cleanup_statuses),
         )
         rows = cursor.fetchall()
     return [dict(row) for row in rows]

@@ -19,7 +19,6 @@ from app.infrastructure.db import (
     init_db,
     get_tasks,
 )
-from app.core.constants import ALLOWED_STATUSES
 from app.services.processor import process_in_background
 from app.api_logic import validate_file_extension, save_uploaded_file, lifespan
 from app.models import (
