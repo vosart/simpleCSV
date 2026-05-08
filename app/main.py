@@ -38,9 +38,9 @@ app.mount(
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/task", response_class=HTMLResponse)
 async def task_page(request: Request):
-    return templates.TemplateResponse("task.html", {"request": request})
+    return templates.TemplateResponse(request, "task.html")

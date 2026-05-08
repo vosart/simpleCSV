@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.INFO)
 BASE_DIR = Path(__file__).resolve().parent.parent
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", BASE_DIR / "files"))
 UPLOAD_DIR.mkdir(exist_ok=True)
+STATIC_DIR = BASE_DIR / "app" / "static"
 
 scheduler_started = False
 
@@ -37,7 +38,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 def validate_file_extension(filename: str) -> bool:
