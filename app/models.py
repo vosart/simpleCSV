@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from enum import Enum
 
 
@@ -22,4 +22,20 @@ class TaskModel(BaseModel):
 class TaskListResponse(BaseModel):
     items: list[TaskModel]
     total: int
+
+class ProcessResponse(BaseModel):
+  status: TaskStatus
+  file_id: str
+  download_url: str
+
+class StatsResponse(BaseModel):
+  total: int
+  done: int
+  failed: int
+  processing: int
+
+class TaskQueryParams(BaseModel):
+  status: TaskStatus | None = None
+  limit: int = Field(default=50, ge=1, le=100)
+  offset: int = Field(default=0, ge=0, le=10000)
 
