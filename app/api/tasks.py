@@ -1,3 +1,5 @@
+from itertools import count
+
 from fastapi import APIRouter, APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -78,10 +80,16 @@ def check_status(file_id: str):
 @router.get("/tasks")
 def list_tasks(status: str = None, limit: int = 50, offset: int = 0):
     limit = min(limit, 100)
-    if status is not None:
-        if status not in ALLOWED_STATUSES:
-            raise HTTPException(status_code=400, detail="Status is not valid")
-    return get_tasks(status, limit, offset)
+
+    if status is not None and status not in ALLOWED_STATUSES:
+        raise HTTPException(status_code=400, detail="Status is not valid")
+
+    tasks = get_tasks(status, limit, offset)
+    total = len(get_tasks(status))
+    return {
+        "items": tasks,
+        "total": total
+    }
 
 @router.get("/tasks/all")
 def list_all_tasks():

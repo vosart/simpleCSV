@@ -1,12 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 
 <head>
     <meta charset="UTF-8">
     <title>Task Detail</title>
-
-    <script type="module" defer src="/static/js/ui/taskPage.js"></script>
-
+    <script type="module" src="/static/js/ui/taskPage.js" defer></script>
     <style>
         body {
             font-family: Arial;
@@ -30,11 +28,15 @@
         .processing {
             color: orange;
         }
+
+        button {
+            margin-right: 5px;
+            padding: 4px 8px;
+        }
     </style>
 </head>
 
 <body>
-
     <h2>Task Detail</h2>
 
     <div class="box">
@@ -52,7 +54,6 @@
         <button id="retryBtn">Retry</button>
         <button id="deleteBtn">Delete</button>
     </div>
-
 </body>
 
 </html>
