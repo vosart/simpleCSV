@@ -5,14 +5,13 @@ from datetime import datetime, timedelta
 from app.core.constants import CLEANUP_STATUSES
 import logging
 from pathlib import Path
+from app.models import TaskModel
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_NAME = BASE_DIR / "simpleCSV.db"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
 
 @contextmanager
 def get_db():
@@ -28,6 +27,7 @@ def get_db():
         raise
     finally:
         conn.close()
+
 
 def init_db():
     with get_db() as conn:
@@ -52,19 +52,18 @@ def init_db():
                 raise
 
 
-
 def create_task(
     file_id: str,
     input_path: str,
     output_path: str,
     status="processing",
-    error: str = None
-    ):
-
+    error: str = None,
+):
     created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     with get_db() as conn:
-        conn.execute("""
+        conn.execute(
+            """
                        INSERT INTO tasks (
                            file_id,
                            status,
@@ -74,89 +73,100 @@ def create_task(
                            created_at)
                        VALUES (?, ?, ?, ?, ?, ?)
 
-                       """, (
-                           file_id,
-                           status,
-                           error,
-                           input_path,
-                           output_path,
-                           created_at
-                           )
-                       )
+                       """,
+            (file_id, status, error, input_path, output_path, created_at),
+        )
 
     return get_task(file_id)
+
 
 def update_task(
     file_id: str,
     status: str,
     error: str = None,
     output_path: str = None,
-    ):
-
+):
     with get_db() as conn:
-        conn.execute("""
+        conn.execute(
+            """
                     UPDATE tasks
                     SET status = ?, error = ?, output_path = ?
                     WHERE file_id = ?
-                    """, (status, error, output_path, file_id))
+                    """,
+            (status, error, output_path, file_id),
+        )
 
 
 def increment_attempts(file_id: str):
     with get_db() as conn:
         cursor = conn.execute(
-            "UPDATE tasks SET attempts = attempts + 1 WHERE file_id = ?",
-            (file_id,)
+            "UPDATE tasks SET attempts = attempts + 1 WHERE file_id = ?", (file_id,)
         )
 
         if cursor.rowcount == 0:
             raise ValueError(f"Task not found {file_id}")
 
-        cursor = conn.execute("SELECT attempts FROM tasks WHERE file_id = ?",
-                              (file_id,)
+        cursor = conn.execute(
+            "SELECT attempts FROM tasks WHERE file_id = ?", (file_id,)
         )
         return cursor.fetchone()[0]
 
-def get_task(file_id: str):
+
+def get_task(file_id: str) -> TaskModel | None:
     with get_db() as conn:
-        cursor = conn.execute("""
+        cursor = conn.execute(
+            """
                        SELECT * FROM tasks WHERE file_id = ?
-                       """, (file_id, ))
+                       """,
+            (file_id,),
+        )
 
         row = cursor.fetchone()
 
     if not row:
-        return {}
+        return None
 
-    return dict(row)
+    return TaskModel(**dict(row))
 
-def get_tasks(status: str = None, limit: int = 50, offset: int = 0):
+
+def get_tasks(status: str = None, limit: int = 50, offset: int = 0) -> list[TaskModel]:
     limit = min(limit, 100)
     offset = min(offset, 10000)
     with get_db() as conn:
         if status is not None:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                                 SELECT COUNT(*)
                                 FROM tasks
                                 WHERE status = ?
-                                """, (status,))
+                                """,
+                (status,),
+            )
             total = cursor.fetchone()[0]
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                                   SELECT * FROM tasks
                                   WHERE status = ?
                                   ORDER BY CREATED_AT
-                                  DESC LIMIT ? OFFSET ?""", (status, limit, offset))
+                                  DESC LIMIT ? OFFSET ?""",
+                (status, limit, offset),
+            )
             rows = cursor.fetchall()
 
         else:
             cursor = conn.execute("SELECT COUNT(*) FROM tasks")
             total = cursor.fetchone()[0]
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                                   SELECT * FROM tasks
                                   ORDER BY CREATED_AT
-                                  DESC LIMIT ? OFFSET ?""", (limit, offset))
+                                  DESC LIMIT ? OFFSET ?""",
+                (limit, offset),
+            )
             rows = cursor.fetchall()
 
-    return [dict(row) for row in rows]
+    return [TaskModel(**dict(row)) for row in rows]
+
 
 def delete_task(file_id: str):
     with get_db() as conn:
@@ -164,21 +174,26 @@ def delete_task(file_id: str):
 
     return cursor.rowcount > 0
 
+
 def get_old_tasks(days: int) -> list:
     if not CLEANUP_STATUSES:
         return []
     old_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
     placeholders = ", ".join(["?"] * len(CLEANUP_STATUSES))
     with get_db() as conn:
-        cursor = conn.execute(f"""
+        cursor = conn.execute(
+            f"""
                               SELECT file_id, input_path, output_path FROM tasks
                               WHERE created_at < ?
                               AND status IN ({placeholders})
                               ORDER BY created_at ASC
                               LIMIT 100
-                              """, (old_date, *CLEANUP_STATUSES))
+                              """,
+            (old_date, *CLEANUP_STATUSES),
+        )
         rows = cursor.fetchall()
     return [dict(row) for row in rows]
+
 
 def cleanup_old_tasks(days: int):
     rows = get_old_tasks(days)
@@ -217,10 +232,7 @@ def cleanup_old_tasks(days: int):
         # --- DB ---
         try:
             with get_db() as conn:
-                cursor = conn.execute(
-                    "DELETE FROM tasks WHERE file_id = ?",
-                    (file_id,)
-                )
+                cursor = conn.execute("DELETE FROM tasks WHERE file_id = ?", (file_id,))
 
                 if cursor.rowcount > 0:
                     db_ok = True
@@ -235,7 +247,3 @@ def cleanup_old_tasks(days: int):
             f"[CLEANUP] file_id={file_id} "
             f"input={input_ok} output={output_ok} db={db_ok}"
         )
-
-
-
-
