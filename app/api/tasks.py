@@ -120,6 +120,13 @@ def retry_task(file_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=400, detail="Only failed tasks can be retried")
 
     update_task(file_id, status="processing", error=None)
+    
+    if task.status != TaskStatus.failed:
+        raise HTTPException(status_code=400, detail="Only failed tasks can be retried")
+
+    if not task.output_path:
+        raise HTTPException(status_code=400, detail="Task has no output path")
+
     background_tasks.add_task(
         process_in_background,
         Path(task.input_path),
