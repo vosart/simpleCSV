@@ -45,7 +45,7 @@ router = APIRouter()
 
 @router.post("/process_csv", response_model=ProcessResponse)
 async def process_csv(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    if not validate_file_extension(file.filename):
+    if not file.filename or validate_file_extension(file.filename):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
 
     if background_tasks is None:
