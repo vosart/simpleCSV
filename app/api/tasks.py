@@ -99,7 +99,9 @@ def check_status(file_id: str):
 def list_tasks(params: TaskQueryParams = Depends()):
     tasks = get_tasks(params.status, params.limit, params.offset)
     total = len(get_tasks(params.status))
-    return TaskListResponse(items=tasks, total=total)
+    return TaskListResponse(
+        items=[TaskResponseDTO.model_validate(t) for t in tasks], total=total
+    )
 
 
 @router.get("/tasks/all")
