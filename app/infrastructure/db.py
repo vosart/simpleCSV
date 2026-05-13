@@ -43,7 +43,7 @@ def create_task(
     input_path: str,
     output_path: str,
     status: str = "processing",
-    error: str = None,
+    error: str | None = None,
 ) -> TaskModel:
     created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with get_db() as session:
@@ -63,8 +63,8 @@ def create_task(
 def update_task(
     file_id: str,
     status: str,
-    error: str = None,
-    output_path: str = None,
+    error: str | None = None,
+    output_path: str | None = None,
 ):
     with get_db() as session:
         row = session.get(TaskORM, file_id)
