@@ -85,7 +85,7 @@ def increment_attempts(file_id: str) -> int:
             raise ValueError(f"Task not found: {file_id}")
         row.attempts = (row.attempts or 0) + 1
         session.flush()
-        return row.attempts
+        return int(row.attempts)
 
 
 def get_task(file_id: str) -> TaskModel | None:
@@ -96,7 +96,7 @@ def get_task(file_id: str) -> TaskModel | None:
         return TaskModel.model_validate(row)
 
 
-def get_tasks(status: str = None, limit: int = 50, offset: int = 0) -> list[TaskModel]:
+def get_tasks(status: str | None = None, limit: int = 50, offset: int = 0) -> list[TaskModel]:
     limit = min(limit, 100)
     offset = min(offset, 10000)
     with get_db() as session:
