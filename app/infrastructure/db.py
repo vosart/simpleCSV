@@ -16,7 +16,9 @@ DATABASE_URL = f"sqlite:///{DB_NAME}"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, echo=False)
+engine = create_engine(
+    DATABASE_URL, connect_args={"check_same_thread": False}, echo=False
+)
 SessionLocal = sessionmaker(bind=engine)
 
 
@@ -96,7 +98,9 @@ def get_task(file_id: str) -> TaskModel | None:
         return TaskModel.model_validate(row)
 
 
-def get_tasks(status: str | None = None, limit: int = 50, offset: int = 0) -> list[TaskModel]:
+def get_tasks(
+    status: str | None = None, limit: int = 50, offset: int = 0
+) -> list[TaskModel]:
     limit = min(limit, 100)
     offset = min(offset, 10000)
     with get_db() as session:
@@ -104,10 +108,7 @@ def get_tasks(status: str | None = None, limit: int = 50, offset: int = 0) -> li
         if status is not None:
             query = query.filter(TaskORM.status == status)
         rows = (
-            query.order_by(TaskORM.created_at.desc())
-            .limit(limit)
-            .offset(offset)
-            .all()
+            query.order_by(TaskORM.created_at.desc()).limit(limit).offset(offset).all()
         )
         return [TaskModel.model_validate(row) for row in rows]
 
