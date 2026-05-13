@@ -57,7 +57,10 @@ def create_task(
             attempts=0,
         )
         session.add(task)
-    return get_task(file_id)
+    result = get_task(file_id)
+    if result is None:
+        raise RuntimeError(f"Task was not found after creation: {file_id}")
+    return result
 
 
 def update_task(
