@@ -41,3 +41,18 @@ class TaskQueryParams(BaseModel):
   limit: int = Field(default=50, ge=1, le=100)
   offset: int = Field(default=0, ge=0, le=10000)
 
+class TaskCreateDTO(BaseModel):
+    file_id: str
+    input_path: str
+    output_path: str | None = None
+
+class TaskResponseDTO(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    file_id: str
+    status: TaskStatus
+    error: str | None = None
+    output_path: str | None = None
+    created_at: str
+    attempts: int = 0
+    
