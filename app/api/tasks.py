@@ -28,6 +28,8 @@ from app.models import (
     StatsResponse,
     TaskQueryParams,
     TaskStatus,
+    TaskCreateDTO,
+    TaskResponseDTO,
 )
 import os
 import uuid
@@ -84,7 +86,7 @@ def download_file(file_id: str):
     )
 
 
-@router.get("/status/{file_id}", response_model=TaskModel)
+@router.get("/status/{file_id}", response_model=TaskResponseDTO)
 def check_status(file_id: str):
     """Проверка статуса задачи"""
     task = get_task(file_id)
@@ -136,7 +138,7 @@ def tasks_stats():
     )
 
 
-@router.get("/tasks/{file_id}", response_model=TaskModel)
+@router.get("/tasks/{file_id}", response_model=TaskResponseDTO)
 def get_task_detail(file_id: str):
     task = get_task(file_id)
     if not task:
