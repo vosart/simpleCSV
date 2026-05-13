@@ -1,81 +1,61 @@
-from genericpath import exists
-import sqlite3
+import logging
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-import logging
 from pathlib import Path
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+
+from app.infrastructure.orm import Base, TaskORM
 from app.models import TaskModel, TaskStatus
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_NAME = BASE_DIR / "simpleCSV.db"
+DATABASE_URL = f"sqlite:///{DB_NAME}"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, echo=False)
+SessionLocal = sessionmaker(bind=engine)
+
 
 @contextmanager
-def get_db():
-    logging.info(f"[DB] using db path = {Path(DB_NAME).resolve()}")
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-
+def get_db() -> Session:
+    session = SessionLocal()
     try:
-        yield conn
-        conn.commit()
+        yield session
+        session.commit()
     except Exception:
-        conn.rollback()
+        session.rollback()
         raise
     finally:
-        conn.close()
+        session.close()
 
 
 def init_db():
-    with get_db() as conn:
-        conn.execute("""
-                       CREATE TABLE IF NOT EXISTS tasks (
-                           file_id          TEXT PRIMARY KEY,
-                           status           TEXT,
-                           error            TEXT,
-                           input_path       TEXT,
-                           output_path      TEXT,
-                           created_at       TEXT    DEFAULT CURRENT_TIMESTAMP
-                       )
-
-                       """)
-        try:
-            conn.execute("ALTER TABLE tasks ADD COLUMN attempts INTEGER DEFAULT 0")
-        except sqlite3.OperationalError as e:
-            if "duplicate column name" in str(e):
-                logging.info("[DB] attempts column already exists")
-                pass
-            else:
-                raise
+    Base.metadata.create_all(engine)
+    logging.info(f"[DB] initialized at {DB_NAME}")
 
 
 def create_task(
     file_id: str,
     input_path: str,
     output_path: str,
-    status="processing",
+    status: str = "processing",
     error: str = None,
-):
+) -> TaskModel:
     created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    with get_db() as conn:
-        conn.execute(
-            """
-                       INSERT INTO tasks (
-                           file_id,
-                           status,
-                           error,
-                           input_path,
-                           output_path,
-                           created_at)
-                       VALUES (?, ?, ?, ?, ?, ?)
-
-                       """,
-            (file_id, status, error, input_path, output_path, created_at),
+    with get_db() as session:
+        task = TaskORM(
+            file_id=file_id,
+            status=status,
+            error=error,
+            input_path=input_path,
+            output_path=output_path,
+            created_at=created_at,
+            attempts=0,
         )
-
+        session.add(task)
     return get_task(file_id)
 
 
@@ -85,112 +65,80 @@ def update_task(
     error: str = None,
     output_path: str = None,
 ):
-    with get_db() as conn:
-        conn.execute(
-            """
-                    UPDATE tasks
-                    SET status = ?, error = ?, output_path = ?
-                    WHERE file_id = ?
-                    """,
-            (status, error, output_path, file_id),
-        )
+    with get_db() as session:
+        row = session.get(TaskORM, file_id)
+        if row:
+            row.status = status
+            row.error = error
+            if output_path is not None:
+                row.output_path = output_path
 
 
-def increment_attempts(file_id: str):
-    with get_db() as conn:
-        cursor = conn.execute(
-            "UPDATE tasks SET attempts = attempts + 1 WHERE file_id = ?", (file_id,)
-        )
-
-        if cursor.rowcount == 0:
-            raise ValueError(f"Task not found {file_id}")
-
-        cursor = conn.execute(
-            "SELECT attempts FROM tasks WHERE file_id = ?", (file_id,)
-        )
-        return cursor.fetchone()[0]
+def increment_attempts(file_id: str) -> int:
+    with get_db() as session:
+        row = session.get(TaskORM, file_id)
+        if not row:
+            raise ValueError(f"Task not found: {file_id}")
+        row.attempts = (row.attempts or 0) + 1
+        session.flush()
+        return row.attempts
 
 
 def get_task(file_id: str) -> TaskModel | None:
-    with get_db() as conn:
-        cursor = conn.execute(
-            """
-                       SELECT * FROM tasks WHERE file_id = ?
-                       """,
-            (file_id,),
-        )
-
-        row = cursor.fetchone()
-
-    if not row:
-        return None
-
-    return TaskModel(**dict(row))
+    with get_db() as session:
+        row = session.get(TaskORM, file_id)
+        if not row:
+            return None
+        return TaskModel.model_validate(row)
 
 
 def get_tasks(status: str = None, limit: int = 50, offset: int = 0) -> list[TaskModel]:
     limit = min(limit, 100)
     offset = min(offset, 10000)
-    with get_db() as conn:
+    with get_db() as session:
+        query = session.query(TaskORM)
         if status is not None:
-            cursor = conn.execute(
-                """
-                                SELECT COUNT(*)
-                                FROM tasks
-                                WHERE status = ?
-                                """,
-                (status,),
-            )
-            total = cursor.fetchone()[0]
-            cursor = conn.execute(
-                """
-                                  SELECT * FROM tasks
-                                  WHERE status = ?
-                                  ORDER BY CREATED_AT
-                                  DESC LIMIT ? OFFSET ?""",
-                (status, limit, offset),
-            )
-            rows = cursor.fetchall()
-
-        else:
-            cursor = conn.execute("SELECT COUNT(*) FROM tasks")
-            total = cursor.fetchone()[0]
-            cursor = conn.execute(
-                """
-                                  SELECT * FROM tasks
-                                  ORDER BY CREATED_AT
-                                  DESC LIMIT ? OFFSET ?""",
-                (limit, offset),
-            )
-            rows = cursor.fetchall()
-
-    return [TaskModel(**dict(row)) for row in rows]
-
-
-def delete_task(file_id: str):
-    with get_db() as conn:
-        cursor = conn.execute("DELETE FROM tasks WHERE file_id = ?", (file_id,))
-
-    return cursor.rowcount > 0
-
-
-def get_old_tasks(days: int) -> list:
-    cleanup_statuses = (TaskStatus.done, TaskStatus.failed)
-    old_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
-    placeholders = ", ".join(["?"] * len(cleanup_statuses))
-    with get_db() as conn:
-        cursor = conn.execute(
-            f"""
-                              SELECT file_id, input_path, output_path FROM tasks
-                              WHERE created_at < ?
-                              AND status IN ({placeholders})
-                              ORDER BY created_at ASC
-                              LIMIT 100
-                              """,
-            (old_date, *cleanup_statuses),
+            query = query.filter(TaskORM.status == status)
+        rows = (
+            query.order_by(TaskORM.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .all()
         )
-        rows = cursor.fetchall()
-    return [dict(row) for row in rows]
+        return [TaskModel.model_validate(row) for row in rows]
+
+
+def delete_task(file_id: str) -> bool:
+    with get_db() as session:
+        row = session.get(TaskORM, file_id)
+        if row:
+            session.delete(row)
+            return True
+    return False
+
+
+def get_old_tasks(days: int) -> list[dict]:
+    cleanup_statuses = [TaskStatus.done.value, TaskStatus.failed.value]
+    old_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    with get_db() as session:
+        rows = (
+            session.query(TaskORM)
+            .filter(
+                TaskORM.created_at < old_date,
+                TaskORM.status.in_(cleanup_statuses),
+            )
+            .order_by(TaskORM.created_at)
+            .limit(100)
+            .all()
+        )
+        return [
+            {
+                "file_id": r.file_id,
+                "input_path": r.input_path,
+                "output_path": r.output_path,
+            }
+            for r in rows
+        ]
 
 
 def cleanup_old_tasks(days: int):
@@ -198,7 +146,6 @@ def cleanup_old_tasks(days: int):
 
     for task in rows:
         file_id = task["file_id"]
-
         input_ok = False
         output_ok = False
         db_ok = False
@@ -206,41 +153,31 @@ def cleanup_old_tasks(days: int):
         input_path = Path(task["input_path"])
         output_path = Path(task["output_path"])
 
-        # --- FILES ---
         try:
             if input_path.exists():
                 input_path.unlink()
-                input_ok = True
-            else:
-                input_ok = True  # уже удалён = тоже OK
-
+            input_ok = True
         except Exception:
             logging.exception(f"[CLEANUP][INPUT] file_id={file_id}")
 
         try:
             if output_path.exists():
                 output_path.unlink()
-                output_ok = True
-            else:
-                output_ok = True
-
+            output_ok = True
         except Exception:
             logging.exception(f"[CLEANUP][OUTPUT] file_id={file_id}")
 
-        # --- DB ---
         try:
-            with get_db() as conn:
-                cursor = conn.execute("DELETE FROM tasks WHERE file_id = ?", (file_id,))
-
-                if cursor.rowcount > 0:
+            with get_db() as session:
+                row = session.get(TaskORM, file_id)
+                if row:
+                    session.delete(row)
                     db_ok = True
                 else:
                     logging.warning(f"[CLEANUP][DB] nothing deleted file_id={file_id}")
-
         except Exception:
             logging.exception(f"[CLEANUP][DB] file_id={file_id}")
 
-        # --- FINAL LOG ---
         logging.info(
             f"[CLEANUP] file_id={file_id} "
             f"input={input_ok} output={output_ok} db={db_ok}"

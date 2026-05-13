@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 
 
@@ -10,6 +10,8 @@ class TaskStatus(str, Enum):
 
 
 class TaskModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     file_id: str
     status: TaskStatus
     error: str | None = None
