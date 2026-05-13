@@ -1,5 +1,6 @@
 import logging
 from contextlib import contextmanager
+from collections.abc import Generator
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -20,7 +21,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 @contextmanager
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     session = SessionLocal()
     try:
         yield session
