@@ -14,6 +14,8 @@ from pathlib import Path
 from app.infrastructure.db import (
     create_task,
     delete_task,
+    update_task,
+    get_task,
     init_db,
     get_tasks,
 )
@@ -117,8 +119,7 @@ def retry_task(file_id: str, background_tasks: BackgroundTasks):
         task = service.retry(file_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
-    
+
     if not task.output_path:
         raise HTTPException(status_code=400, detail="Task has no output path")
 
