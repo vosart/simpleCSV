@@ -1,5 +1,4 @@
 from app.domain.task import Task
-from app.models import TaskCreateDTO
 from app.infrastructure.db import get_task, update_task
 
 
@@ -19,5 +18,8 @@ class TaskService:
         if not task.can_retry():
             raise ValueError("Only failed tasks can be retried")
 
-        update_task(file_id, status="retry")
-        return task
+        update_task(file_id, status="processing", error=None)
+        updated = self.get(file_id)
+        if updated is None:
+            raise RuntimeError(f"Task disappeared after update: {file_id}")
+        return updated
