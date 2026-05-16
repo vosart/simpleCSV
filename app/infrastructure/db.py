@@ -108,8 +108,8 @@ def get_tasks(
         if status is not None:
             stmt = stmt.where(TaskORM.status == status)
         rows = session.execute(
-            stmt.order_by(TaskORM.created_at.desc()).limit(limit).offset(offset)).scalars().all()
-        )
+            stmt.order_by(TaskORM.created_at.desc()).limit(limit).offset(offset)
+        ).scalars().all()
         return [TaskModel.model_validate(row) for row in rows]
 
 
