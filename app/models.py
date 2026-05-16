@@ -7,7 +7,7 @@ class TaskStatus(str, Enum):
     done = "done"
     failed = "failed"
     retry = "retry"
-    
+
 class TaskCreateDTO(BaseModel):
     file_id: str
     input_path: str
@@ -46,9 +46,7 @@ class ProcessResponse(BaseModel):
 
 class StatsResponse(BaseModel):
   total: int
-  done: int
-  failed: int
-  processing: int
+  stats: dict[str, int]
 
 class TaskQueryParams(BaseModel):
   status: TaskStatus | None = None
@@ -56,4 +54,3 @@ class TaskQueryParams(BaseModel):
   offset: int = Field(default=0, ge=0, le=10000)
 
 
-    

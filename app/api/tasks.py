@@ -22,7 +22,6 @@ from app.models import (
     ProcessResponse,
     StatsResponse,
     TaskQueryParams,
-    TaskStatus,
     TaskResponseDTO,
 )
 from app.services.task_service import TaskService
@@ -131,7 +130,11 @@ def retry_task(file_id: str, background_tasks: BackgroundTasks):
 
 @router.get("/tasks/stats", response_model=StatsResponse)
 def tasks_stats():
-    return get_tasks_stats()
+    stats = get_tasks_stats()
+    return StatsResponse(
+        total=sum(stats.values()),
+        stats=stats
+                         )
 
 
 @router.get("/tasks/{file_id}", response_model=TaskResponseDTO)

@@ -126,6 +126,7 @@ def count_tasks(status: str | None = None) -> int:
 
 
 def get_tasks_stats() -> dict[str, int]:
+    
     with get_db() as session:
         rows = session.execute(
             select(TaskORM.status, func.count().label("cnt")).group_by(TaskORM.status)

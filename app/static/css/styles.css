@@ -1,0 +1,45 @@
+body {
+    font-family: Arial;
+    margin: 20px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+}
+
+td,
+th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.done {
+    color: green;
+}
+
+.failed {
+    color: red;
+}
+
+.processing {
+    color: orange;
+}
+
+#pagination button {
+    margin: 0 2px;
+    padding: 4px 8px;
+}
+
+#pagination button:disabled {
+    background: #ccc;
+    cursor: default;
+}
+
+.stats-box {
+    margin-top: 20px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    width: 220px;
+}
