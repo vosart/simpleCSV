@@ -1,7 +1,4 @@
-from itertools import count
-
 from fastapi import (
-    APIRouter,
     APIRouter,
     UploadFile,
     File,
@@ -14,21 +11,16 @@ from pathlib import Path
 from app.infrastructure.db import (
     create_task,
     delete_task,
-    update_task,
-    get_task,
-    init_db,
     get_tasks,
 )
 from app.services.processor import process_in_background
 from app.api_logic import validate_file_extension, save_uploaded_file, lifespan
 from app.models import (
-    TaskModel,
     TaskListResponse,
     ProcessResponse,
     StatsResponse,
     TaskQueryParams,
     TaskStatus,
-    TaskCreateDTO,
     TaskResponseDTO,
 )
 from app.services.task_service import TaskService
@@ -46,7 +38,7 @@ router = APIRouter()
 
 @router.post("/process_csv", response_model=ProcessResponse)
 async def process_csv(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    if not file.filename or validate_file_extension(file.filename):
+    if not file.filename or not validate_file_extension(file.filename):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
 
     if background_tasks is None:
@@ -75,10 +67,11 @@ def download_file(file_id: str):
     """Скачивание готового Excel файла"""
     file_path = UPLOAD_DIR / f"{file_id}.xlsx"
     service = TaskService()
-    try:
-        task = service.get_for_download(file_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    task = service.get(file_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if not task.is_done():
+        raise HTTPException(status_code=400, detail="File is not ready yet")
 
     return FileResponse(
         file_path,
