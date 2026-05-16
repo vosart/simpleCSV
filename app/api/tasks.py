@@ -31,6 +31,7 @@ from app.models import (
     TaskCreateDTO,
     TaskResponseDTO,
 )
+from app.services.task_service import TaskService
 import os
 import uuid
 
@@ -113,13 +114,12 @@ def list_all_tasks():
 
 @router.post("/tasks/{file_id}/retry")
 def retry_task(file_id: str, background_tasks: BackgroundTasks):
-    task = get_task(file_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    if task.status != TaskStatus.failed:
-        raise HTTPException(status_code=400, detail="Only failed tasks can be retried")
-
-    update_task(file_id, status="processing", error=None)
+    service = TaskService()
+    try:
+        task = service.retry(file_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
     
     if task.status != TaskStatus.failed:
         raise HTTPException(status_code=400, detail="Only failed tasks can be retried")
