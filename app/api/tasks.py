@@ -67,7 +67,11 @@ def download_file(file_id: str):
     """Скачивание готового Excel файла"""
     file_path = UPLOAD_DIR / f"{file_id}.xlsx"
     service = TaskService()
-    task = service.get_for_download(file_id)
+    try:
+        task = service.get_for_download(file_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except HTTPException(status_code=400, detail=str(e))
 
     return FileResponse(
         file_path,

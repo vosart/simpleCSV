@@ -25,9 +25,9 @@ class TaskService:
         return updated
 
     def get_for_download(self, file_id: str) -> Task:
-      task = self.get(file_id)
-      if task is None:
-        raise ValueError(f"Task not found: {file_id}")
-      if not task.is_done():
-        raise ValueError("File is not ready yet")
-      return task
+          task = self.get(file_id)
+          if task is None:
+            raise LookupError(f"Task not found: {file_id}")
+          if not task.is_done():
+            raise ValueError("File is not ready yet")
+          return task
