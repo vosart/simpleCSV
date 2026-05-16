@@ -71,8 +71,9 @@ def download_file(file_id: str):
         task = service.get_for_download(file_id)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except HTTPException(status_code=400, detail=str(e))
-
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
     return FileResponse(
         file_path,
         filename=f"{file_id}.xlsx",
