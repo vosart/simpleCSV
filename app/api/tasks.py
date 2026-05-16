@@ -91,11 +91,10 @@ def download_file(file_id: str):
 def check_status(file_id: str):
     """Проверка статуса задачи"""
     service = TaskService()
-    try:
-        task = service.get(file_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    return task
+    task = service.get(file_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return TaskResponseDTO.model_validate(task)
 
 
 @router.get("/tasks", response_model=TaskListResponse)
@@ -147,10 +146,11 @@ def tasks_stats():
 
 @router.get("/tasks/{file_id}", response_model=TaskResponseDTO)
 def get_task_detail(file_id: str):
-    task = get_task(file_id)
-    if not task:
+    service = TaskService()
+    task = service.get(file_id)
+    if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    return TaskResponseDTO.model_validate(task)
 
 
 @router.delete("/tasks/{file_id}")
