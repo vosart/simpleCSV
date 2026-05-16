@@ -4,7 +4,7 @@ from collections.abc import Generator
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, func
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.infrastructure.orm import Base, TaskORM
@@ -107,10 +107,30 @@ def get_tasks(
         stmt = select(TaskORM)
         if status is not None:
             stmt = stmt.where(TaskORM.status == status)
-        rows = session.execute(
-            stmt.order_by(TaskORM.created_at.desc()).limit(limit).offset(offset)
-        ).scalars().all()
+        rows = (
+            session.execute(
+                stmt.order_by(TaskORM.created_at.desc()).limit(limit).offset(offset)
+            )
+            .scalars()
+            .all()
+        )
         return [TaskModel.model_validate(row) for row in rows]
+
+
+def count_tasks(status: str | None = None) -> int:
+    with get_db() as session:
+        stmt = select(func.count()).select_from(TaskORM)
+        if status is not None:
+            stmt = stmt.where(TaskORM.status == status)
+        return session.execute(stmt).scalar_one()
+
+
+def get_tasks_stats() -> dict[str, int]:
+    with get_db() as session:
+        rows = session.execute(
+            select(TaskORM.status, func.count().label("cnt")).group_by(TaskORM.status)
+        ).all()
+        return {row.status: row.cnt for row in rows}
 
 
 def delete_task(file_id: str) -> bool:

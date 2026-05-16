@@ -12,6 +12,8 @@ from app.infrastructure.db import (
     create_task,
     delete_task,
     get_tasks,
+    count_tasks,
+    get_tasks_stats,
 )
 from app.services.processor import process_in_background
 from app.api_logic import validate_file_extension, save_uploaded_file, lifespan
@@ -93,8 +95,8 @@ def check_status(file_id: str):
 
 @router.get("/tasks", response_model=TaskListResponse)
 def list_tasks(params: TaskQueryParams = Depends()):
-    tasks = get_tasks(params.status, params.limit, params.offset)
-    total = len(get_tasks(params.status))
+    tasks = get_tasks(status=params.status, limit=params.limit, offset=params.offset)
+    total = count_tasks(params.status)
     return TaskListResponse(
         items=[TaskResponseDTO.model_validate(t) for t in tasks], total=total
     )
@@ -129,13 +131,7 @@ def retry_task(file_id: str, background_tasks: BackgroundTasks):
 
 @router.get("/tasks/stats", response_model=StatsResponse)
 def tasks_stats():
-    tasks = get_tasks()
-    return StatsResponse(
-        total=len(tasks),
-        done=sum(t.status == TaskStatus.done for t in tasks),
-        failed=sum(t.status == TaskStatus.failed for t in tasks),
-        processing=sum(t.status == TaskStatus.processing for t in tasks),
-    )
+    return get_tasks_stats()
 
 
 @router.get("/tasks/{file_id}", response_model=TaskResponseDTO)
