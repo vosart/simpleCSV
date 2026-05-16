@@ -4,7 +4,7 @@ from collections.abc import Generator
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.infrastructure.orm import Base, TaskORM
@@ -104,11 +104,11 @@ def get_tasks(
     limit = min(limit, 100)
     offset = min(offset, 10000)
     with get_db() as session:
-        query = session.query(TaskORM)
+        stmt = select(TaskORM)
         if status is not None:
-            query = query.filter(TaskORM.status == status)
-        rows = (
-            query.order_by(TaskORM.created_at.desc()).limit(limit).offset(offset).all()
+            stmt = stmt.where(TaskORM.status == status)
+        rows = session.execute(
+            stmt.order_by(TaskORM.created_at.desc()).limit(limit).offset(offset)).scalars().all()
         )
         return [TaskModel.model_validate(row) for row in rows]
 
