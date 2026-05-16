@@ -68,7 +68,7 @@ def download_file(file_id: str):
     file_path = UPLOAD_DIR / f"{file_id}.xlsx"
     service = TaskService()
     try:
-        task = service.get_for_download(file_id)
+        service.get_for_download(file_id)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
@@ -77,7 +77,7 @@ def download_file(file_id: str):
     return FileResponse(
         file_path,
         filename=f"{file_id}.xlsx",
-        media_type="routerlication/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
 
