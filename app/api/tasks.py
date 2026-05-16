@@ -74,11 +74,11 @@ async def process_csv(background_tasks: BackgroundTasks, file: UploadFile = File
 def download_file(file_id: str):
     """Скачивание готового Excel файла"""
     file_path = UPLOAD_DIR / f"{file_id}.xlsx"
-    task = get_task(file_id)
-    if not task:
-        raise HTTPException(404, "Task not found")
-    if task.status != TaskStatus.done:
-        raise HTTPException(400, "File yet not ready")
+    service = TaskService()
+    try:
+        task = service.get_for_download(file_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return FileResponse(
         file_path,
@@ -90,9 +90,11 @@ def download_file(file_id: str):
 @router.get("/status/{file_id}", response_model=TaskResponseDTO)
 def check_status(file_id: str):
     """Проверка статуса задачи"""
-    task = get_task(file_id)
-    if not task:
-        raise HTTPException(404, "Task not found")
+    service = TaskService()
+    try:
+        task = service.get(file_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return task
 
 
