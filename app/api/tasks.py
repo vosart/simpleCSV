@@ -67,11 +67,7 @@ def download_file(file_id: str):
     """Скачивание готового Excel файла"""
     file_path = UPLOAD_DIR / f"{file_id}.xlsx"
     service = TaskService()
-    task = service.get(file_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    if not task.is_done():
-        raise HTTPException(status_code=400, detail="File is not ready yet")
+    task = service.get_for_download(file_id)
 
     return FileResponse(
         file_path,
